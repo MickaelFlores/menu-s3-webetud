@@ -16,110 +16,30 @@
 (function() {
     'use strict';
 
-    // Fonction pour extraire automatiquement les ressources depuis la page
-    function extractResourcesFromPage() {
-        const resources = [];
-        
-        // Méthode 1: Extraction depuis la liste des cours sur la page de catégorie
-        const courseBoxes = document.querySelectorAll('.coursebox');
-        courseBoxes.forEach(box => {
-            const linkElement = box.querySelector('.coursename a.aalink');
-            if (linkElement) {
-                const fullName = linkElement.textContent.trim();
-                const href = linkElement.href;
-                
-                // Extraire l'ID depuis l'URL
-                const idMatch = href.match(/id=(\d+)/);
-                if (idMatch && fullName.startsWith('R3.')) {
-                    const id = idMatch[1];
-                    const parts = fullName.split(' - ');
-                    const code = parts[0];
-                    const name = parts.slice(1).join(' - ') || fullName;
-                    
-                    resources.push({ code, name, id });
-                }
-            }
-        });
-
-        // Méthode 2: Extraction depuis la navigation latérale si la première méthode échoue
-        if (resources.length === 0) {
-            const navLinks = document.querySelectorAll('#inst720 .tree_item a[href*="course/view.php"]');
-            navLinks.forEach(link => {
-                const fullName = link.textContent.trim();
-                const href = link.href;
-                
-                const idMatch = href.match(/id=(\d+)/);
-                if (idMatch && fullName.match(/^R3\.\d+/)) {
-                    const id = idMatch[1];
-                    // Nettoyer le nom (certains sont abrégés dans la nav)
-                    const code = fullName.match(/^R3\.\d+/)[0];
-                    const name = fullName.replace(code, '').replace(/^\s*-\s*/, '').trim() || 
-                                getFullNameFromCode(code);
-                    
-                    resources.push({ code, name, id });
-                }
-            });
-        }
-
-        // Tri par code de ressource
-        resources.sort((a, b) => a.code.localeCompare(b.code));
-        
-        console.log('Ressources extraites:', resources);
-        return resources;
-    }
-
-    // Mapping des codes vers les noms complets (fallback)
-    function getFullNameFromCode(code) {
-        const nameMap = {
-            'R3.01': 'Développement Web',
-            'R3.02': 'Programmes efficaces', 
-            'R3.03': 'Analyse',
-            'R3.04': 'Qualité de développement',
-            'R3.05': 'Programmation système',
-            'R3.06': 'Architecture Réseaux',
-            'R3.07': 'SQL et programmation',
-            'R3.08': 'Probabilités',
-            'R3.09': 'Cryptographie',
-            'R3.10': 'Management SI',
-            'R3.11': 'Droit contrats et numérique',
-            'R3.12': 'Anglais',
-            'R3.13': 'Communication professionnelle',
-            'R3.14': 'PPP Portfolio',
-            'R3.15': 'IoT'
-        };
-        return nameMap[code] || code;
-    }
-
-    // Configuration des ressources (automatique ou fallback manuel)
-    let resources = extractResourcesFromPage();
-    
-    // Fallback si l'extraction automatique échoue
-    if (resources.length === 0) {
-        console.warn('Extraction automatique échouée, utilisation des valeurs par défaut');
-        resources = [
-            { code: "R3.01", name: "Développement Web", id: "827" },
-            { code: "R3.02", name: "Programmes efficaces", id: "828" },
-            { code: "R3.03", name: "Analyse", id: "829" },
-            { code: "R3.04", name: "Qualité de développement", id: "830" },
-            { code: "R3.05", name: "Programmation système", id: "843" },
-            { code: "R3.06", name: "Architecture Réseaux", id: "832" },
-            { code: "R3.07", name: "SQL et programmation", id: "833" },
-            { code: "R3.08", name: "Probabilités", id: "834" },
-            { code: "R3.09", name: "Cryptographie", id: "835" },
-            { code: "R3.10", name: "Management SI", id: "836" },
-            { code: "R3.11", name: "Droit contrats et numérique", id: "837" },
-            { code: "R3.12", name: "Anglais", id: "875" },
-            { code: "R3.13", name: "Communication professionnelle", id: "839" },
-            { code: "R3.14", name: "PPP Portfolio", id: "840" },
-            { code: "R3.15", name: "IoT", id: "880" }
-        ];
-    }
+    // Configuration des ressources avec leurs IDs (à modifier selon vos besoins)
+    const resources = [
+        { code: "R3.01", name: "Développement Web", id: "827" },
+        { code: "R3.02", name: "Programmes efficaces", id: "828" },
+        { code: "R3.03", name: "Analyse", id: "829" },
+        { code: "R3.04", name: "Qualité de développement", id: "830" },
+        { code: "R3.05", name: "Programmation système", id: "843" },
+        { code: "R3.06", name: "Architecture Réseaux", id: "832" },
+        { code: "R3.07", name: "SQL et programmation", id: "833" },
+        { code: "R3.08", name: "Probabilités", id: "834" },
+        { code: "R3.09", name: "Cryptographie", id: "835" },
+        { code: "R3.10", name: "Management SI", id: "836" },
+        { code: "R3.11", name: "Droit contrats et numérique", id: "837" },
+        { code: "R3.12", name: "Anglais", id: "875" },
+        { code: "R3.13", name: "Communication professionnelle", id: "839" },
+        { code: "R3.14", name: "PPP Portfolio", id: "840" },
+        { code: "R3.15", name: "IoT", id: "880" }
+    ];
 
     // Styles CSS modernes inspirés d'iOS
     const styles = `
         #s3-resources-menu {
             position: fixed;
-            top: 20px;
+            top: 60px;
             right: 20px;
             z-index: 10000;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
