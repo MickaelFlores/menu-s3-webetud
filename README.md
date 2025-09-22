@@ -27,7 +27,7 @@ Après installation, configurez Tampermonkey avec ces paramètres recommandés :
 
 Une fois Tampermonkey configuré, cliquez sur le bouton ci-dessous pour installer automatiquement le script du menu S3.
 
-**[📥 Installer le Script Menu S3](https://github.com/MickaelFlores/menu-s3-webetud/blob/main/menu-s3.user.js)**
+**[📥 Installer le Script Menu S3](./menu-s3.user.js)**
 
 > **✅ C'est tout !**  
 > Le menu apparaîtra automatiquement sur toutes les pages Webetud de l'IUT Blagnac.
