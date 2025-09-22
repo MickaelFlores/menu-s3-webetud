@@ -14,7 +14,8 @@ Tampermonkey est une extension qui permet d'exécuter des scripts personnalisés
 
 ## ⚙️ Étape 2 : Configurer l'extension
 
-Après installation, configurez Tampermonkey avec ces paramètres recommandés :
+Après installation, configurez Tampermonkey avec ces paramètres obligatoires :
+PS : Activez le mode développeur dans les parametres d'extensions.
 
 ![Interface de configuration de l'extension](options.png)
 *Interface de configuration de l'extension*
