@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Menu Ressources S3 + Cookie PHPSESSID + Session Keeper
+// @name         Menu Ressources S3 + Cookie Transfer (PHPSESSID + MoodleSession) + Session Keeper
 // @namespace    http://tampermonkey.net/
-// @version      3.0
-// @description  Menu moderne des ressources S3 pour webetud.iut-blagnac.fr + Transfère le cookie PHPSESSID entre domaines + Maintien automatique des sessions ScoDoc
+// @version      4.0
+// @description  Menu moderne des ressources S3 pour webetud.iut-blagnac.fr + Transfère PHPSESSID et MoodleSession entre domaines + Maintien automatique des sessions ScoDoc
 // @author       Vous
 // @match        https://webetud.iut-blagnac.fr/*
 // @match        https://scodocetudiant.iut-blagnac.fr/*
@@ -16,7 +16,7 @@
 // @downloadURL  none
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
 
     // ================================
@@ -45,7 +45,7 @@
     // ================================
     // INITIALISATION
     // ================================
-    window.addEventListener('DOMContentLoaded', function() {
+    window.addEventListener('DOMContentLoaded', function () {
         initCookieTransfer();
         if (S3_CONFIG.enabled) {
             initS3Menu();
@@ -65,41 +65,86 @@
     // ================================
 
     function initCookieTransfer() {
+        // ===== GESTION SCODOC (PHPSESSID) =====
         if (window.location.hostname === 'scodocetudiant.iut-blagnac.fr') {
-            // Attendre que la page soit chargée
-            window.addEventListener('load', function() {
-                function getCookie(name) {
-                    const cookies = document.cookie.split(';');
-                    for (let cookie of cookies) {
-                        const [key, value] = cookie.trim().split('=');
-                        if (key === name) return value;
+            console.log('🔐 Initialisation récupération PHPSESSID sur ScoDoc');
+
+            // Attendre que la page soit chargée pour ScoDoc
+            window.addEventListener('load', function () {
+                setTimeout(() => {
+                    const phpsessid = getCookieValue('PHPSESSID');
+                    if (phpsessid) {
+                        GM_setValue('scodoc_phpsessid', phpsessid);
+                        GM_log('scodoc_phpsessid sauvegardé: ' + phpsessid);
+                        console.log('✅ ScoDoc PHPSESSID sauvegardé:', phpsessid.substring(0, 10) + '...');
+
+                        // Envoyer à l'API de maintien des sessions
+                        sendSessionToKeeper(phpsessid, 'PHPSESSID');
+                    } else {
+                        console.log('⚠️ PHPSESSID non trouvé sur ScoDoc');
                     }
-                    return null;
-                }
-
-                const phpsessid = getCookie('PHPSESSID');
-                if (phpsessid) {
-                    GM_setValue('scodoc_phpsessid', phpsessid);
-                    GM_log('scodoc_phpsessid sauvegardé: ' + phpsessid);
-                    console.log('scodoc_phpsessid sauvegardé: ' + phpsessid);
-
-                    // NOUVELLE FONCTIONNALITÉ: Envoyer à l'API de maintien des sessions
-                    sendSessionToKeeper(phpsessid);
-                }
+                }, 2000); // Attendre 2 secondes pour que la session soit établie
             });
 
-            // Observer les changements de cookies (nouveau PHPSESSID)
-            observeCookieChanges();
+            // Observer les changements de cookies PHPSESSID avec un délai plus long
+            setTimeout(() => {
+                observeCookieChanges('PHPSESSID', 'scodoc_phpsessid');
+            }, 3000);
         }
 
+        // ===== GESTION WEBETUD/MOODLE (MoodleSession) =====
+        if (window.location.hostname === 'webetud.iut-blagnac.fr') {
+            console.log('🔐 Initialisation récupération MoodleSession sur WebEtud');
+
+            // Attendre que la page soit chargée pour WebEtud/Moodle
+            window.addEventListener('load', function () {
+                setTimeout(() => {
+                    const moodleSession = getCookieValue('MoodleSession');
+                    if (moodleSession) {
+                        GM_setValue('MoodleSession', moodleSession);
+                        GM_log('MoodleSession sauvegardé: ' + moodleSession);
+                        console.log('✅ Moodle Session sauvegardé:', moodleSession.substring(0, 10) + '...');
+
+                        // Envoyer à l'API de maintien des sessions
+                        sendSessionToKeeper(moodleSession, 'MoodleSession');
+                    } else {
+                        console.log('⚠️ MoodleSession non trouvé sur WebEtud');
+                    }
+                }, 2000); // Attendre 2 secondes pour que la session soit établie
+            });
+
+            // Observer les changements de cookies MoodleSession avec un délai plus long
+            setTimeout(() => {
+                observeCookieChanges('MoodleSession', 'MoodleSession');
+            }, 3000);
+        }
+
+        // ===== APPLICATION DES COOKIES SUR iam-mickael.me =====
         if (window.location.hostname === 'iam-mickael.me') {
-            // Récupérer et appliquer le cookie
-            const storedCookie = GM_getValue('scodoc_phpsessid');
-            if (storedCookie) {
-                document.cookie = `scodoc_phpsessid=${storedCookie}; path=/; domain=.iam-mickael.me; secure; samesite=lax`;
-                GM_log('scodoc_phpsessid appliqué: ' + storedCookie);
-                console.log('scodoc_phpsessid appliqué: ' + storedCookie);
+            console.log('🔐 Application des cookies sur iam-mickael.me');
+
+            // Récupérer et appliquer le cookie PHPSESSID de ScoDoc
+            const storedPhpSessId = GM_getValue('scodoc_phpsessid');
+            if (storedPhpSessId) {
+                document.cookie = `scodoc_phpsessid=${storedPhpSessId}; path=/; domain=.iam-mickael.me; secure; samesite=lax`;
+                GM_log('scodoc_phpsessid appliqué: ' + storedPhpSessId);
+                console.log('✅ ScoDoc PHPSESSID appliqué sur iam-mickael.me:', storedPhpSessId.substring(0, 10) + '...');
+            } else {
+                console.log('⚠️ Aucun PHPSESSID ScoDoc stocké');
             }
+
+            // Récupérer et appliquer le cookie MoodleSession de WebEtud
+            const storedMoodleSession = GM_getValue('MoodleSession');
+            if (storedMoodleSession) {
+                document.cookie = `MoodleSession=${storedMoodleSession}; path=/; domain=.iam-mickael.me; secure; samesite=lax`;
+                GM_log('MoodleSession appliqué: ' + storedMoodleSession);
+                console.log('✅ Moodle Session appliqué sur iam-mickael.me:', storedMoodleSession.substring(0, 10) + '...');
+            } else {
+                console.log('⚠️ Aucun MoodleSession stocké');
+            }
+
+            // Notification de statut des cookies
+            showCookieStatusNotification(storedPhpSessId, storedMoodleSession);
         }
     }
 
@@ -108,56 +153,75 @@
     // ================================
 
     /**
-     * Observer les changements de cookies pour détecter un nouveau PHPSESSID
+     * Observer les changements de cookies pour détecter un nouveau cookie
      */
-    function observeCookieChanges() {
+    function observeCookieChanges(cookieName, storageKey) {
         if (!SESSION_KEEPER_CONFIG.enabled) return;
 
-        let lastPhpsessid = null;
+        let lastCookieValue = GM_getValue(storageKey) || null;
+        let checkCount = 0;
+        const maxChecks = 200; // Limiter à 200 vérifications (10 minutes)
+
+        console.log(`🔄 Démarrage observation ${cookieName} sur ${window.location.hostname}`);
 
         // Fonction pour vérifier les changements
         function checkCookieChanges() {
-            const currentPhpsessid = getCookieValue('PHPSESSID');
+            checkCount++;
+            const currentCookieValue = getCookieValue(cookieName);
 
-            if (currentPhpsessid && currentPhpsessid !== lastPhpsessid) {
+            if (currentCookieValue && currentCookieValue !== lastCookieValue) {
                 if (SESSION_KEEPER_CONFIG.debug) {
-                    console.log('🔄 Nouveau PHPSESSID détecté:', currentPhpsessid);
+                    console.log(`🔄 Nouveau ${cookieName} détecté:`, currentCookieValue.substring(0, 10) + '...');
                 }
 
-                lastPhpsessid = currentPhpsessid;
-                sendSessionToKeeper(currentPhpsessid);
+                lastCookieValue = currentCookieValue;
+                GM_setValue(storageKey, currentCookieValue);
+                sendSessionToKeeper(currentCookieValue, cookieName);
+            }
+
+            // Arrêter après un certain nombre de vérifications
+            if (checkCount >= maxChecks) {
+                console.log(`⏹️ Arrêt observation ${cookieName} après ${maxChecks} vérifications`);
+                clearInterval(intervalId);
             }
         }
 
-        // Vérifier toutes les 2 secondes
-        setInterval(checkCookieChanges, 2000);
+        // Vérifier toutes les 3 secondes
+        const intervalId = setInterval(checkCookieChanges, 3000);
 
-        // Vérifier aussi au chargement initial
-        setTimeout(checkCookieChanges, 1000);
+        // Vérifier aussi au chargement initial après un délai
+        setTimeout(checkCookieChanges, 1500);
+        setTimeout(checkCookieChanges, 5000);
+        setTimeout(checkCookieChanges, 10000);
     }
-
     /**
      * Récupérer la valeur d'un cookie
      */
     function getCookieValue(name) {
-        const cookies = document.cookie.split(';');
-        for (let cookie of cookies) {
-            const [key, value] = cookie.trim().split('=');
-            if (key === name) return value;
+        try {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [key, value] = cookie.trim().split('=');
+                if (key === name && value) {
+                    return decodeURIComponent(value);
+                }
+            }
+        } catch (e) {
+            console.error('Erreur lecture cookie:', e);
         }
         return null;
     }
 
     /**
-     * Envoyer le PHPSESSID à l'API de maintien des sessions
+     * Envoyer le cookie à l'API de maintien des sessions
      */
-    function sendSessionToKeeper(phpsessid) {
-        if (!SESSION_KEEPER_CONFIG.enabled || !phpsessid) {
+    function sendSessionToKeeper(cookieValue, cookieType) {
+        if (!SESSION_KEEPER_CONFIG.enabled || !cookieValue) {
             return;
         }
 
         if (SESSION_KEEPER_CONFIG.debug) {
-            console.log('📤 Envoi du PHPSESSID à l\'API Session Keeper...');
+            console.log(`📤 Envoi du ${cookieType} à l'API Session Keeper...`);
         }
 
         // Utiliser GM_xmlhttpRequest pour éviter les problèmes CORS
@@ -168,25 +232,27 @@
                 'Content-Type': 'application/json'
             },
             data: JSON.stringify({
-                phpsessid: phpsessid
+                cookie_value: cookieValue,
+                cookie_type: cookieType,
+                domain: window.location.hostname
             }),
             timeout: 10000,
-            onload: function(response) {
+            onload: function (response) {
                 try {
                     const result = JSON.parse(response.responseText);
 
                     if (result.success) {
                         if (SESSION_KEEPER_CONFIG.debug) {
-                            console.log('✅ Session envoyée avec succès à l\'API:', result.message);
+                            console.log(`✅ ${cookieType} envoyé avec succès:`, result.message);
                         }
-                        GM_log('Session Keeper: ' + result.message);
+                        GM_log(`Session Keeper ${cookieType}: ` + result.message);
 
                         // Afficher une notification discrète
-                        showSessionKeeperNotification('Session sauvegardée pour maintien automatique', 'success');
+                        showSessionKeeperNotification(`${cookieType} sauvegardé pour maintien automatique`, 'success');
 
                     } else {
-                        console.warn('⚠️ Erreur API Session Keeper:', result.message);
-                        showSessionKeeperNotification('Erreur: ' + result.message, 'error');
+                        console.warn(`⚠️ Erreur API Session Keeper pour ${cookieType}:`, result.message);
+                        showSessionKeeperNotification(`Erreur ${cookieType}: ` + result.message, 'error');
                     }
 
                 } catch (e) {
@@ -194,74 +260,60 @@
                     showSessionKeeperNotification('Erreur de communication avec l\'API', 'error');
                 }
             },
-            onerror: function(error) {
-                console.error('❌ Erreur requête API Session Keeper:', error);
+            onerror: function (error) {
+                console.error(`❌ Erreur requête API Session Keeper pour ${cookieType}:`, error);
                 showSessionKeeperNotification('Erreur de connexion à l\'API', 'error');
             },
-            ontimeout: function() {
-                console.warn('⏱️ Timeout API Session Keeper');
+            ontimeout: function () {
+                console.warn(`⏱️ Timeout API Session Keeper pour ${cookieType}`);
                 showSessionKeeperNotification('Timeout API - Réessayer plus tard', 'warning');
             }
         });
     }
 
-    /**
-     * Afficher une notification discrète
-     */
-    function showSessionKeeperNotification(message, type = 'info') {
-        // Vérifier si on est sur ScoDoc pour afficher la notification
-        if (window.location.hostname !== 'scodocetudiant.iut-blagnac.fr') {
-            return;
-        }
 
-        const notification = document.createElement('div');
-        notification.style.cssText = `
+
+    /**
+     * Afficher le statut des cookies sur iam-mickael.me
+     */
+    function showCookieStatusNotification(phpsessid, moodleSession) {
+        const status = document.createElement('div');
+        status.style.cssText = `
             position: fixed;
-            top: 20px;
+            bottom: 20px;
             right: 20px;
-            padding: 12px 20px;
-            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.8);
             color: white;
+            padding: 16px 20px;
+            border-radius: 12px;
             font-size: 14px;
-            font-weight: 500;
             z-index: 10000;
-            opacity: 0;
-            transform: translateX(100%);
-            transition: all 0.3s ease;
-            max-width: 300px;
-            word-wrap: break-word;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            max-width: 350px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         `;
 
-        // Couleurs selon le type
-        const colors = {
-            success: '#10B981',
-            error: '#EF4444',
-            warning: '#F59E0B',
-            info: '#3B82F6'
-        };
+        const scodocStatus = phpsessid ? '✅ ScoDoc connecté' : '❌ ScoDoc non connecté';
+        const moodleStatus = moodleSession ? '✅ Moodle connecté' : '❌ Moodle non connecté';
 
-        notification.style.backgroundColor = colors[type] || colors.info;
-        notification.textContent = '🔐 ' + message;
+        status.innerHTML = `
+            <div style="font-weight: 600; margin-bottom: 8px;">🔐 Statut des sessions</div>
+            <div style="margin-bottom: 4px;">${scodocStatus}</div>
+            <div>${moodleStatus}</div>
+        `;
 
-        document.body.appendChild(notification);
+        document.body.appendChild(status);
 
-        // Animation d'entrée
+        // Masquer après 8 secondes
         setTimeout(() => {
-            notification.style.opacity = '1';
-            notification.style.transform = 'translateX(0)';
-        }, 100);
-
-        // Masquer après 4 secondes
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            notification.style.transform = 'translateX(100%)';
+            status.style.opacity = '0';
+            status.style.transform = 'translateY(20px)';
             setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
+                if (status.parentNode) {
+                    status.parentNode.removeChild(status);
                 }
             }, 300);
-        }, 4000);
+        }, 8000);
     }
 
     // ================================
@@ -592,11 +644,34 @@
     // PARTIE 4: UTILITAIRES
     // ================================
 
+
+    window.testCookieRetrieval = function () {
+        console.log('=== TEST RÉCUPÉRATION COOKIES ===');
+        console.log('Domaine actuel:', window.location.hostname);
+        console.log('Cookies disponibles:', document.cookie);
+
+        if (window.location.hostname === 'scodocetudiant.iut-blagnac.fr') {
+            const phpsessid = getCookieValue('PHPSESSID');
+            console.log('PHPSESSID trouvé:', phpsessid ? '✅ ' + phpsessid.substring(0, 10) + '...' : '❌ Non trouvé');
+        }
+
+        if (window.location.hostname === 'webetud.iut-blagnac.fr') {
+            const moodleSession = getCookieValue('MoodleSession');
+            console.log('MoodleSession trouvé:', moodleSession ? '✅ ' + moodleSession.substring(0, 10) + '...' : '❌ Non trouvé');
+        }
+
+        console.log('Cookies stockés:');
+        console.log('- ScoDoc PHPSESSID:', GM_getValue('scodoc_phpsessid') || 'Non stocké');
+        console.log('- MoodleSession:', GM_getValue('MoodleSession') || 'Non stocké');
+    };
+
+
+
     /**
      * Fonction utilitaire pour vérifier le statut des sessions
      * (Accessible via la console pour debug)
      */
-    window.checkSessionKeeperStatus = function() {
+    window.checkSessionKeeperStatus = function () {
         if (!SESSION_KEEPER_CONFIG.enabled) {
             console.log('❌ Session Keeper désactivé');
             return;
@@ -606,7 +681,7 @@
             method: 'GET',
             url: SESSION_KEEPER_CONFIG.apiUrl,
             timeout: 5000,
-            onload: function(response) {
+            onload: function (response) {
                 try {
                     const result = JSON.parse(response.responseText);
                     console.log('📊 Statut Session Keeper:', result);
@@ -614,16 +689,41 @@
                     console.error('Erreur parsing statut:', e);
                 }
             },
-            onerror: function() {
+            onerror: function () {
                 console.error('Erreur connexion API statut');
             }
         });
     };
 
+    /**
+     * Fonction pour vérifier les cookies stockés
+     */
+    window.checkStoredCookies = function () {
+        const scodoc = GM_getValue('scodoc_phpsessid');
+        const moodle = GM_getValue('MoodleSession');
+
+        console.log('🔐 Cookies stockés:');
+        console.log('ScoDoc PHPSESSID:', scodoc ? '✅ ' + scodoc.substring(0, 10) + '...' : '❌ Non trouvé');
+        console.log('Moodle Session:', moodle ? '✅ ' + moodle.substring(0, 10) + '...' : '❌ Non trouvé');
+
+        return { scodoc, moodle };
+    };
+
     // Log de démarrage
-    console.log('🚀 Script Tampermonkey S3 + Session Keeper chargé');
-    console.log('📍 Domaine:', window.location.hostname);
+    console.log('🚀 Script Tampermonkey S3 + Dual Session Keeper chargé');
+    console.log('📍 Domaine actuel:', window.location.hostname);
     console.log('🔧 Session Keeper:', SESSION_KEEPER_CONFIG.enabled ? 'Activé' : 'Désactivé');
     console.log('🎛️ Menu S3:', S3_CONFIG.enabled ? 'Activé' : 'Désactivé');
+
+    // Log spécifique selon le domaine
+    if (window.location.hostname === 'scodocetudiant.iut-blagnac.fr') {
+        console.log('🍪 Mode: Récupération PHPSESSID sur ScoDoc');
+    } else if (window.location.hostname === 'webetud.iut-blagnac.fr') {
+        console.log('🍪 Mode: Récupération MoodleSession sur WebEtud + Menu S3');
+    } else if (window.location.hostname === 'iam-mickael.me') {
+        console.log('🍪 Mode: Application des cookies stockés');
+    }
+
+    console.log('💡 Tapez testCookieRetrieval() dans la console pour tester manuellement');
 
 })();
