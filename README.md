@@ -20,9 +20,7 @@ PS : Activez le mode développeur dans les parametres d'extensions.
 ![Interface de configuration de l'extension](options.png)
 *Interface de configuration de l'extension*
 
-**[▶️ Tutoriel vidéo rapide](https://youtu.be/YOUR_TUTORIAL_ID)**
-[![Vidéo](https://img.icons8.com/ios-filled/100/play--v1.png)](https://sendvid.com/jd2in8m1)
-
+**[▶️ Tutoriel vidéo rapide](https://sendvid.com/ffwtxaau)**
 
 ---
 
