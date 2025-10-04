@@ -11,7 +11,7 @@ Tampermonkey est une extension qui permet d'exécuter des scripts personnalisés
 **[🔧 Installer Tampermonkey](https://tampermonkey.net)**
 
 ---
-
+<iframe width="640" height="360" src="//sendvid.com/embed/jd2in8m1" frameborder="0" allowfullscreen></iframe>
 ## ⚙️ Étape 2 : Configurer l'extension
 
 Après installation, configurez Tampermonkey avec ces paramètres obligatoires :
